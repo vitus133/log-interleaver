@@ -126,9 +126,7 @@ The tool can generate time-series plots from log data using configurable regex p
 
 ### Example Plot
 
-![T-BC Log Analysis Plot](plot.png)
-
-*Note: For an interactive version with zooming, panning, and hover details, generate the HTML plot (see [Interactive Visualization](#interactive-visualization) section below) and open it in a web browser.*
+*Note: Generate visualization plots using the `-visualize` flag (see usage examples above). For an interactive version with zooming, panning, and hover details, generate the HTML plot (see [Interactive Visualization](#interactive-visualization) section below) and open it in a web browser.*
 
 ### Configuration File Format
 
@@ -368,16 +366,9 @@ The HTML file uses Plotly.js and provides:
 
 ### Viewing the Interactive Plot
 
-**Option 1: Local Viewing (Recommended)**
 Simply open the generated `plot.html` file in any modern web browser. The file is self-contained and includes all necessary JavaScript libraries via CDN.
 
-**Option 2: GitHub Pages (Optional)**
-If you want to view the interactive plot directly from GitHub:
-1. Enable GitHub Pages in your repository settings
-2. Commit the `plot.html` file to your repository
-3. Access it via: `https://<username>.github.io/<repo>/plot.html`
-
-*Note: GitHub README files cannot execute JavaScript, so the static PNG image is shown above. The interactive HTML version must be opened separately.*
+*Note: GitHub README files cannot execute JavaScript, so interactive HTML plots must be opened separately in a web browser.*
 
 ## Data Export
 
