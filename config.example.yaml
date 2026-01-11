@@ -88,3 +88,47 @@ patterns:
     line_style: "-"
     yaxis_label: "State"
     yaxis_index: 0
+
+  # eno5 lockStatus series (extract from JSON and map states)
+  - name: "eno5 lockStatus"
+    regex: '"lockStatus":"([^"]+)"[^}]*\}\s+eno5'
+    tag_filter: "daemon"
+    value_group: 1
+    state_group: 1
+    state_mapping:
+      unlocked: 10
+      locked: 20
+      "locked-ho-acquired": 30
+      holdover: 40
+    color: "cyan"
+    marker: "s"
+    line_style: "-"
+    yaxis_label: "Lock Status"
+    yaxis_index: 0
+
+  # T-BC state series
+  - name: "T-BC state"
+    regex: 'T-BC\[.*\]:\[ts2phc\.\d+\.config\]\s+\w+\s+offset\s+\d+\s+T-BC-STATUS\s+(s[0-2])'
+    tag_filter: "daemon"
+    value_group: 1
+    state_group: 1
+    state_mapping:
+      s0: 10
+      s1: 20
+      s2: 30
+    color: "magenta"
+    marker: "d"
+    line_style: "-"
+    yaxis_label: "T-BC State"
+    yaxis_index: 0
+
+  # eno5 DPLL phase offset series
+  - name: "eno5 DPLL offset"
+    regex: 'dpll\.go:\d+\]\s+setting phase offset to\s+(-?\d+)\s+ns for clock id\s+\d+\s+iface\s+eno5'
+    tag_filter: "daemon"
+    value_group: 1
+    color: "teal"
+    marker: "."
+    line_style: "-"
+    yaxis_label: "DPLL Offset (ns)"
+    yaxis_index: 0

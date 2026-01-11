@@ -183,7 +183,21 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 
 			// Add to plot
 			p.Add(scatter, line)
-			p.Legend.Add(seriesName, scatter, line)
+			
+			// Build legend label with state mapping if available
+			legendLabel := seriesName
+			if patternCfg != nil && patternCfg.StateMapping != nil && len(patternCfg.StateMapping) > 0 {
+				// Create mapping string for legend
+				mappingParts := make([]string, 0, len(patternCfg.StateMapping))
+				for state, value := range patternCfg.StateMapping {
+					mappingParts = append(mappingParts, fmt.Sprintf("%s=%.0f", state, value))
+				}
+				// Sort for consistent display
+				sort.Strings(mappingParts)
+				legendLabel = fmt.Sprintf("%s (%s)", seriesName, strings.Join(mappingParts, ", "))
+			}
+			
+			p.Legend.Add(legendLabel, scatter, line)
 
 			// Use right axis if specified
 			if axisIdx == 1 && rightAxis != nil {

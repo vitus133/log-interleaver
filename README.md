@@ -175,6 +175,53 @@ For patterns that extract state values (like "s0", "s1", "s2", "s3"), use `state
 
 This will map state "s0" to 10, "s1" to 20, "s2" to 30, and "s3" to 40 in the plot.
 
+### Additional Pattern Examples
+
+The example configuration includes several additional patterns:
+
+**DPLL Lock Status:**
+```yaml
+- name: "eno5 lockStatus"
+  regex: '"lockStatus":"([^"]+)"[^}]*\}\s+eno5'
+  tag_filter: "daemon"
+  value_group: 1
+  state_group: 1
+  state_mapping:
+    unlocked: 10
+    locked: 20
+    "locked-ho-acquired": 30
+    holdover: 40
+```
+
+**T-BC State:**
+```yaml
+- name: "T-BC state"
+  regex: 'T-BC\[.*\]:\[ts2phc\.\d+\.config\]\s+\w+\s+offset\s+\d+\s+T-BC-STATUS\s+(s[0-2])'
+  tag_filter: "daemon"
+  value_group: 1
+  state_group: 1
+  state_mapping:
+    s0: 10
+    s1: 20
+    s2: 30
+```
+
+**DPLL Phase Offset:**
+```yaml
+- name: "eno5 DPLL offset"
+  regex: 'dpll\.go:\d+\]\s+setting phase offset to\s+(-?\d+)\s+ns for clock id\s+\d+\s+iface\s+eno5'
+  tag_filter: "daemon"
+  value_group: 1
+```
+
+### Legend Display
+
+When a pattern has `state_mapping` configured, the legend will automatically display the mapping. For example:
+- "TR state (s0=10, s1=20, s2=30, s3=40)"
+- "eno5 lockStatus (holdover=40, locked=20, locked-ho-acquired=30, unlocked=10)"
+
+This makes it easy to understand what the numeric values represent on the plot.
+
 ### Example Usage
 
 ```bash
