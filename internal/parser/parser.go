@@ -73,9 +73,9 @@ func (p *Parser) ParseLine(line string, lineNum int) *LogLine {
 func ResolveUptimeTimestamps(lines []*LogLine) error {
 	// First pass: collect all absolute timestamps with their line numbers and uptimes
 	type absTimestamp struct {
-		lineNum  int
-		time     time.Time
-		uptime   float64
+		lineNum   int
+		time      time.Time
+		uptime    float64
 		hasUptime bool
 	}
 

@@ -164,6 +164,7 @@ type SeriesData struct {
 	Marker       string            `json:"marker,omitempty"`
 	LineStyle    string            `json:"line_style,omitempty"`
 	Mode         string            `json:"mode"`         // "lines+markers", "lines", "markers"
+	Step         bool              `json:"step,omitempty"` // If true, use step plot (hold value between points)
 	StateMapping map[string]float64 `json:"state_mapping,omitempty"`
 }
 
@@ -266,6 +267,7 @@ func ExportJSON(lines []*parser.LogLine, configPath, outputPath string) error {
 			Marker:    pattern.Marker,
 			LineStyle: pattern.LineStyle,
 			Mode:      mode,
+			Step:      pattern.Step,
 		}
 
 		if pattern.StateMapping != nil {

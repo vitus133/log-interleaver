@@ -13,6 +13,7 @@ import (
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
+	"gonum.org/v1/plot/vg/draw"
 )
 
 // Visualizer creates plots from log data
@@ -118,11 +119,36 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 			})
 
 			// Convert to plotter.XYs
-			xy := make(plotter.XYs, len(points))
+			var xy plotter.XYs
 			startTime := points[0].Time
-			for i, pt := range points {
-				xy[i].X = pt.Time.Sub(startTime).Seconds()
-				xy[i].Y = pt.Value
+			
+			// Check if step plot is requested
+			useStep := patternCfg != nil && patternCfg.Step
+			
+			if useStep && len(points) > 1 {
+				// For step plots, create horizontal-vertical steps
+				// Each point needs a horizontal segment to the next x value
+				xy = make(plotter.XYs, 0, len(points)*2-1)
+				for i, pt := range points {
+					x := pt.Time.Sub(startTime).Seconds()
+					y := pt.Value
+					
+					// Add the point
+					xy = append(xy, plotter.XY{X: x, Y: y})
+					
+					// Add horizontal segment to next point (if not last point)
+					if i < len(points)-1 {
+						nextX := points[i+1].Time.Sub(startTime).Seconds()
+						xy = append(xy, plotter.XY{X: nextX, Y: y})
+					}
+				}
+			} else {
+				// Normal linear plot
+				xy = make(plotter.XYs, len(points))
+				for i, pt := range points {
+					xy[i].X = pt.Time.Sub(startTime).Seconds()
+					xy[i].Y = pt.Value
+				}
 			}
 
 			// Build legend label with state mapping if available
@@ -152,20 +178,34 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 
 			// Determine marker style
 			markerRadius := vg.Points(3)
+			var markerShape draw.GlyphDrawer
 			if patternCfg != nil && patternCfg.Marker != "" {
-				// Adjust marker size based on type
+				// Adjust marker size and shape based on type
 				switch patternCfg.Marker {
-				case "x", "+", "X":
+				case "x", "X":
 					markerRadius = vg.Points(4)
+					markerShape = draw.CrossGlyph{}
+				case "+":
+					markerRadius = vg.Points(4)
+					markerShape = draw.PlusGlyph{}
 				case "o", "O", "circle":
 					markerRadius = vg.Points(3)
+					markerShape = draw.CircleGlyph{}
 				case "s", "S", "square":
 					markerRadius = vg.Points(3)
+					markerShape = draw.SquareGlyph{}
 				case "d", "D", "diamond":
 					markerRadius = vg.Points(4)
+					markerShape = draw.RingGlyph{} // Diamond not directly available, use ring as alternative
 				case ".", "point":
 					markerRadius = vg.Points(2)
+					markerShape = draw.CircleGlyph{}
+				default:
+					markerShape = draw.CircleGlyph{} // Default to circle
 				}
+			} else {
+				// Default marker if none specified
+				markerShape = draw.CircleGlyph{}
 			}
 
 			// Create scatter plot (dots)
@@ -175,6 +215,9 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 			}
 			scatter.GlyphStyle.Radius = markerRadius
 			scatter.GlyphStyle.Color = plotColor
+			if markerShape != nil {
+				scatter.GlyphStyle.Shape = markerShape
+			}
 
 			// Determine if we should draw lines
 			drawLines := true

@@ -138,7 +138,8 @@ func GenerateInteractiveHTML(lines []*parser.LogLine, configPath, outputPath str
                     width: 2,
                     dash: s.line_style === '--' || s.line_style === 'dashed' ? 'dash' : 
                           s.line_style === ':' || s.line_style === 'dotted' ? 'dot' : 
-                          s.line_style === '-.' || s.line_style === 'dashdot' ? 'dashdot' : 'solid'
+                          s.line_style === '-.' || s.line_style === 'dashdot' ? 'dashdot' : 'solid',
+                    shape: s.step ? 'hv' : 'linear'  // 'hv' = horizontal-vertical step, 'linear' = normal line
                 } : undefined
             };
             
@@ -158,8 +159,13 @@ func GenerateInteractiveHTML(lines []*parser.LogLine, configPath, outputPath str
                     'pink': 'rgb(227, 119, 194)',
                     'gray': 'rgb(127, 127, 127)'
                 };
-                trace.marker.color = colorMap[s.color.toLowerCase()] || s.color;
-                trace.line.color = colorMap[s.color.toLowerCase()] || s.color;
+                const color = colorMap[s.color.toLowerCase()] || s.color;
+                if (trace.marker) {
+                    trace.marker.color = color;
+                }
+                if (trace.line) {
+                    trace.line.color = color;
+                }
             }
             
             return trace;

@@ -26,7 +26,20 @@ A Go-based tool for interleaving and analyzing PTP (Precision Time Protocol) log
 
 ## Usage
 
+### Capturing the logs
+
+To capture the logs, you can use the following commands:
+On the monitor machine:
 ```bash
+ptp4l -f ptp4l.mon -i ens2f0 -m --slaveOnly=1 --free_running=1 | awk '{ print strftime("%Y-%m-%d %H:%M:%S"), "E825", $0; fflush(); }'  |tee e825.txt
+ptp4l -f ptp4l.mon -i ens2f2 -m --slaveOnly=1 --free_running=1 | awk '{ print strftime("%Y-%m-%d %H:%M:%S"), "E830", $0; fflush(); }'  |tee e830.txt
+```
+On the cluster:
+```bash
+ oc -c linuxptp-daemon-container logs ds/linuxptp-daemon > daemon.txt
+ ```
+ 
+### Using the tool
 # Build the tool
 go build ./cmd/log-interleaver
 
@@ -43,14 +56,14 @@ go build ./cmd/log-interleaver
 ./log-interleaver -logs logs -visualize -config config.yaml -plot-output plot.png
 
 # Combine interleaving and visualization
-./log-interleaver -logs logs -output interleaved.log -visualize -config config.yaml -plot-output plot.png
+./log-interleaver -logs logs -output interleaved.log -visualize -config config.yaml  -export-html plot.html
 ```
 
 ## Command-line Options
 
 - `-logs <directory>`: Directory containing log files (default: `logs`)
 - `-output <file>`: Output file path (default: stdout)
-- `-analyze`: Run basic analysis on the interleaved logs
+- `-analyze`: Run basic stats on the interleaved logs
 - `-no-auto-align`: Disable automatic timezone alignment (default: auto-align enabled)
 - `-offset <spec>`: Manual timezone offsets in format `tag:hours,tag:hours` (e.g., `e825:5,e830:5`). Manual offsets override automatic alignment for specified files.
 - `-visualize`: Generate visualization plot from interleaved logs

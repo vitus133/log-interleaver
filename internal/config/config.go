@@ -18,6 +18,7 @@ type PatternConfig struct {
 	Color        string            `yaml:"color"`         // Optional: matplotlib color
 	LineStyle    string            `yaml:"line_style"`   // Optional: matplotlib line style (e.g., "-", "--", ".")
 	Marker       string            `yaml:"marker"`       // Optional: matplotlib marker (e.g., ".", "o", "x")
+	Step         bool              `yaml:"step"`         // Optional: if true, use step plot (hold value between points)
 	YAxisLabel   string            `yaml:"yaxis_label"`  // Optional: Y-axis label for this series
 	YAxisIndex   int               `yaml:"yaxis_index"`  // Optional: which Y-axis to use (0=left, 1=right)
 }
