@@ -17,16 +17,16 @@ patterns:
     yaxis_label: "Offset (ns)"
     yaxis_index: 0
 
-  # E830 delay series
-  - name: "E830 delay"
-    regex: 'E830 ptp4l\[.*\]: master offset\s+-?\d+\s+s\d+\s+freq\s+[+-]\d+\s+path delay\s+(\d+)'
-    tag_filter: "e830"
-    value_group: 1
-    color: "green"
-    marker: "."
-    line_style: "-"
-    yaxis_label: "Path Delay (ns)"
-    yaxis_index: 0
+  # # E830 delay series
+  # - name: "E830 delay"
+  #   regex: 'E830 ptp4l\[.*\]: master offset\s+-?\d+\s+s\d+\s+freq\s+[+-]\d+\s+path delay\s+(\d+)'
+  #   tag_filter: "e830"
+  #   value_group: 1
+  #   color: "green"
+  #   marker: "."
+  #   line_style: "-"
+  #   yaxis_label: "Path Delay (ns)"
+  #   yaxis_index: 0
 
   # E825 offset series
   - name: "E825 offset"
@@ -39,16 +39,16 @@ patterns:
     yaxis_label: "Offset (ns)"
     yaxis_index: 0
 
-  # E825 delay series
-  - name: "E825 delay"
-    regex: 'E825-NAC ptp4l\[.*\]: master offset\s+-?\d+\s+s\d+\s+freq\s+[+-]\d+\s+path delay\s+(\d+)'
-    tag_filter: "e825"
-    value_group: 1
-    color: "orange"
-    marker: "."
-    line_style: "-"
-    yaxis_label: "Path Delay (ns)"
-    yaxis_index: 0
+  # # E825 delay series
+  # - name: "E825 delay"
+  #   regex: 'E825-NAC ptp4l\[.*\]: master offset\s+-?\d+\s+s\d+\s+freq\s+[+-]\d+\s+path delay\s+(\d+)'
+  #   tag_filter: "e825"
+  #   value_group: 1
+  #   color: "orange"
+  #   marker: "."
+  #   line_style: "-"
+  #   yaxis_label: "Path Delay (ns)"
+  #   yaxis_index: 0
 
   # TR (daemon) offset series
   - name: "TR offset"
@@ -61,16 +61,16 @@ patterns:
     yaxis_label: "Offset (ns)"
     yaxis_index: 0
 
-  # TR path delay series
-  - name: "TR path delay"
-    regex: 'ptp4l\[.*\]: \[ptp4l\.\d+\.config:\d+\] master offset\s+-?\d+\s+s\d+\s+freq\s+[+-]\d+\s+path delay\s+(\d+)'
-    tag_filter: "daemon"
-    value_group: 1
-    color: "brown"
-    marker: "."
-    line_style: "-"
-    yaxis_label: "Path Delay (ns)"
-    yaxis_index: 0
+  # # TR path delay series
+  # - name: "TR path delay"
+  #   regex: 'ptp4l\[.*\]: \[ptp4l\.\d+\.config:\d+\] master offset\s+-?\d+\s+s\d+\s+freq\s+[+-]\d+\s+path delay\s+(\d+)'
+  #   tag_filter: "daemon"
+  #   value_group: 1
+  #   color: "brown"
+  #   marker: "."
+  #   line_style: "-"
+  #   yaxis_label: "Path Delay (ns)"
+  #   yaxis_index: 0
 
   # TR state series (map state strings to numeric values)
   - name: "TR state"
@@ -96,10 +96,10 @@ patterns:
     value_group: 1
     state_group: 1
     state_mapping:
-      unlocked: 10
-      locked: 20
-      "locked-ho-acquired": 30
-      holdover: 40
+      unlocked: 12
+      locked: 22
+      "locked-ho-acquired": 32
+      holdover: 42
     color: "cyan"
     marker: "s"
     line_style: "-"
@@ -113,9 +113,9 @@ patterns:
     value_group: 1
     state_group: 1
     state_mapping:
-      s0: 10
-      s1: 20
-      s2: 30
+      s0: 14
+      s1: 24
+      s2: 34
     color: "magenta"
     marker: "d"
     line_style: "-"
