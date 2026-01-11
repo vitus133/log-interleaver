@@ -4,4 +4,6 @@ logs/
 *.log
 *.png
 
+# Ignore compiled binary, but keep source directory
 log-interleaver
+!cmd/log-interleaver/
