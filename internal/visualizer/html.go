@@ -119,12 +119,24 @@ func GenerateInteractiveHTML(lines []*parser.LogLine, configPath, outputPath str
                 legendName += ' (' + mappingStr + ')';
             }
             
+            // Format hover template to show both X and Y values
+            // %{x} = X value, %{y} = Y value, %{fullData.name} = series name
+            // Use series-specific Y-axis label if available, otherwise use global label
+            const yLabel = s.yaxis_label || data.yaxis_label || 'Value';
+            const hoverTemplate = '<b>%{fullData.name}</b><br>' +
+                data.xaxis_label + ': %{x:.6f}<br>' +
+                yLabel + ': %{y:.6f}<extra></extra>';
+            
             const trace = {
                 x: s.x,
                 y: s.y,
                 name: legendName,
                 type: 'scatter',
                 mode: s.mode || 'lines+markers',
+                hovertemplate: hoverTemplate,
+                hoverlabel: {
+                    namelength: -1  // Don't truncate series names
+                },
                 marker: s.mode && s.mode.includes('markers') ? {
                     size: 5,
                     symbol: s.marker === 'o' || s.marker === 'O' || s.marker === 'circle' ? 'circle' : 
@@ -184,6 +196,14 @@ func GenerateInteractiveHTML(lines []*parser.LogLine, configPath, outputPath str
                 gridcolor: '#e0e0e0'
             },
             hovermode: 'closest',
+            hoverlabel: {
+                namelength: -1,  // Don't truncate series names in hover
+                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                bordercolor: '#333',
+                font: {
+                    size: 12
+                }
+            },
             legend: {
                 x: 0,
                 y: 1,

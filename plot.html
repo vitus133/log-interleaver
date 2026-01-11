@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>PTP Log Analysis</title>
+    <title>T-BC Log Analysis</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
         body {
@@ -50,7 +50,7 @@
     </style>
 </head>
 <body>
-    <h1>PTP Log Analysis</h1>
+    <h1>T-BC Log Analysis</h1>
     
     <div class="controls">
         <button onclick="resetZoom()">Reset Zoom</button>
@@ -75,7 +75,7 @@
         const data = {
   "series": [
     {
-      "name": "E830 offset",
+      "name": "E830 offset (ptp4l in free-running mode)",
       "x": [
         27.216268,
         29.216268,
@@ -2305,10 +2305,11 @@
       "color": "blue",
       "marker": ".",
       "line_style": "-",
-      "mode": "lines+markers"
+      "mode": "lines+markers",
+      "yaxis_label": "Offset (ns)"
     },
     {
-      "name": "E825 offset",
+      "name": "E825 offset (ptp4l in free-running mode)",
       "x": [
         31.216268,
         33.216268,
@@ -4540,7 +4541,8 @@
       "color": "red",
       "marker": ".",
       "line_style": "-",
-      "mode": "lines+markers"
+      "mode": "lines+markers",
+      "yaxis_label": "Offset (ns)"
     },
     {
       "name": "TR offset",
@@ -76291,7 +76293,8 @@
       "color": "purple",
       "marker": ".",
       "line_style": "-",
-      "mode": "lines+markers"
+      "mode": "lines+markers",
+      "yaxis_label": "Offset (ns)"
     },
     {
       "name": "TR state",
@@ -148043,6 +148046,7 @@
       "marker": "o",
       "line_style": "-",
       "mode": "lines+markers",
+      "yaxis_label": "State",
       "state_mapping": {
         "s0": 10,
         "s1": 20,
@@ -148087,10 +148091,11 @@
         42
       ],
       "color": "black",
-      "marker": "o",
+      "marker": ".",
       "line_style": "-",
       "mode": "lines+markers",
       "step": true,
+      "yaxis_label": "Lock Status",
       "state_mapping": {
         "holdover": 2,
         "locked": 22,
@@ -152442,6 +152447,7 @@
       "marker": "d",
       "line_style": "-",
       "mode": "lines+markers",
+      "yaxis_label": "T-BC State",
       "state_mapping": {
         "s0": 14,
         "s1": 24,
@@ -155941,11 +155947,12 @@
       "color": "teal",
       "marker": ".",
       "line_style": "-",
-      "mode": "lines+markers"
+      "mode": "lines+markers",
+      "yaxis_label": "DPLL Offset (ns)"
     }
   ],
   "start_time": "2026-01-11T16:58:42.783732Z",
-  "title": "PTP Log Analysis",
+  "title": "T-BC Log Analysis",
   "xaxis_label": "Time (seconds from start)",
   "yaxis_label": "Value"
 }
@@ -155964,12 +155971,24 @@
                 legendName += ' (' + mappingStr + ')';
             }
             
+            
+            
+            
+            const yLabel = s.yaxis_label || data.yaxis_label || 'Value';
+            const hoverTemplate = '<b>%{fullData.name}</b><br>' +
+                data.xaxis_label + ': %{x:.6f}<br>' +
+                yLabel + ': %{y:.6f}<extra></extra>';
+            
             const trace = {
                 x: s.x,
                 y: s.y,
                 name: legendName,
                 type: 'scatter',
                 mode: s.mode || 'lines+markers',
+                hovertemplate: hoverTemplate,
+                hoverlabel: {
+                    namelength: -1  
+                },
                 marker: s.mode && s.mode.includes('markers') ? {
                     size: 5,
                     symbol: s.marker === 'o' || s.marker === 'O' || s.marker === 'circle' ? 'circle' : 
@@ -156029,6 +156048,14 @@
                 gridcolor: '#e0e0e0'
             },
             hovermode: 'closest',
+            hoverlabel: {
+                namelength: -1,  
+                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                bordercolor: '#333',
+                font: {
+                    size: 12
+                }
+            },
             legend: {
                 x: 0,
                 y: 1,
