@@ -1,0 +1,90 @@
+title: "PTP Log Analysis"
+xaxis_label: "Time (seconds from start)"
+yaxis_label: "Value"
+width: 16
+height: 10
+dpi: 100
+
+patterns:
+  # E830 offset series
+  - name: "E830 offset"
+    regex: 'E830 ptp4l\[.*\]: master offset\s+(-?\d+)\s+s\d+\s+freq'
+    tag_filter: "e830"
+    value_group: 1
+    color: "blue"
+    marker: "."
+    line_style: "-"
+    yaxis_label: "Offset (ns)"
+    yaxis_index: 0
+
+  # E830 delay series
+  - name: "E830 delay"
+    regex: 'E830 ptp4l\[.*\]: master offset\s+-?\d+\s+s\d+\s+freq\s+[+-]\d+\s+path delay\s+(\d+)'
+    tag_filter: "e830"
+    value_group: 1
+    color: "green"
+    marker: "."
+    line_style: "-"
+    yaxis_label: "Path Delay (ns)"
+    yaxis_index: 0
+
+  # E825 offset series
+  - name: "E825 offset"
+    regex: 'E825-NAC ptp4l\[.*\]: master offset\s+(-?\d+)\s+s\d+\s+freq'
+    tag_filter: "e825"
+    value_group: 1
+    color: "red"
+    marker: "."
+    line_style: "-"
+    yaxis_label: "Offset (ns)"
+    yaxis_index: 0
+
+  # E825 delay series
+  - name: "E825 delay"
+    regex: 'E825-NAC ptp4l\[.*\]: master offset\s+-?\d+\s+s\d+\s+freq\s+[+-]\d+\s+path delay\s+(\d+)'
+    tag_filter: "e825"
+    value_group: 1
+    color: "orange"
+    marker: "."
+    line_style: "-"
+    yaxis_label: "Path Delay (ns)"
+    yaxis_index: 0
+
+  # TR (daemon) offset series
+  - name: "TR offset"
+    regex: 'ptp4l\[.*\]: \[ptp4l\.\d+\.config:\d+\] master offset\s+(-?\d+)\s+s\d+\s+freq'
+    tag_filter: "daemon"
+    value_group: 1
+    color: "purple"
+    marker: "."
+    line_style: "-"
+    yaxis_label: "Offset (ns)"
+    yaxis_index: 0
+
+  # TR path delay series
+  - name: "TR path delay"
+    regex: 'ptp4l\[.*\]: \[ptp4l\.\d+\.config:\d+\] master offset\s+-?\d+\s+s\d+\s+freq\s+[+-]\d+\s+path delay\s+(\d+)'
+    tag_filter: "daemon"
+    value_group: 1
+    color: "brown"
+    marker: "."
+    line_style: "-"
+    yaxis_label: "Path Delay (ns)"
+    yaxis_index: 0
+
+  # TR state series (map state strings to numeric values)
+  - name: "TR state"
+    regex: 'ptp4l\[.*\]: \[ptp4l\.\d+\.config:\d+\] master offset\s+-?\d+\s+(s\d+)\s+freq'
+    tag_filter: "daemon"
+    value_group: 1
+    state_group: 1
+    state_mapping:
+      s0: 10
+      s1: 20
+      s2: 30
+      s3: 40
+    color: "red"
+    marker: "o"
+    line_style: "-"
+    yaxis_label: "State"
+    yaxis_index: 0
