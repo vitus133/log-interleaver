@@ -40,6 +40,8 @@ On the cluster:
  ```
  
 ### Using the tool
+
+```bash
 # Build the tool
 go build ./cmd/log-interleaver
 
@@ -91,15 +93,6 @@ Where:
 - `daemon` is the tag derived from the source filename (`daemon.txt`)
 - The rest is the original log line
 
-## Architecture
-
-The tool follows Clean Architecture principles:
-
-- `cmd/log-interleaver/`: Application entrypoint
-- `internal/parser/`: Log parsing and timestamp resolution logic
-- `internal/interleaver/`: Log merging and sorting logic
-- `pkg/timestamp/`: Timestamp parsing utilities
-
 ## How Uptime Resolution Works
 
 Uptime timestamps are resolved by:
@@ -131,12 +124,18 @@ You can disable automatic alignment with `-no-auto-align` and manually specify o
 
 The tool can generate time-series plots from log data using configurable regex patterns. Each pattern extracts specific metrics (like offset, delay, state) and displays them as separate series on the plot.
 
+### Example Plot
+
+![T-BC Log Analysis Plot](plot.png)
+
+*Note: For an interactive version with zooming, panning, and hover details, generate the HTML plot (see [Interactive Visualization](#interactive-visualization) section below) and open it in a web browser.*
+
 ### Configuration File Format
 
 Create a YAML configuration file (see `config.example.yaml` for a complete example):
 
 ```yaml
-title: "PTP Log Analysis"
+title: "T-BC Log Analysis"
 xaxis_label: "Time (seconds from start)"
 yaxis_label: "Value"
 width: 16
@@ -179,6 +178,7 @@ patterns:
   - `"-."` or `"dashdot"`: Dash-dot line
   - `"none"`: No line (markers only)
   - Empty string or omitted: Defaults to solid line (even if marker is set)
+- `step`: Boolean (optional). If `true`, creates a step plot that holds the Y value horizontally until the next data point, then steps vertically. Useful for discrete state changes or constant values between measurements. Default: `false`
 - `yaxis_label`: Y-axis label for this series
 - `yaxis_index`: Which Y-axis to use (0=left, 1=right)
 
@@ -206,6 +206,44 @@ Examples:
 - name: "My Series"
   marker: "x"
   line_style: "-"
+
+# Step plot (holds value between points)
+- name: "State Series"
+  marker: "o"
+  line_style: "-"
+  step: true  # Creates horizontal-vertical steps
+```
+
+### Step Plots
+
+Step plots are useful for visualizing discrete state changes or values that remain constant between measurements. When `step: true` is set:
+
+- The line holds its Y value horizontally until the next data point
+- Then it steps vertically to the new value
+- This creates a "staircase" effect showing when values change
+
+**Use cases:**
+- State machines (e.g., PTP states: s0, s1, s2, s3)
+- Lock status changes (unlocked → locked → holdover)
+- Discrete configuration changes
+- Any metric that represents a constant value between measurements
+
+**Example:**
+```yaml
+- name: "TR state"
+  regex: 'ptp4l\[.*\]: \[ptp4l\.\d+\.config:\d+\] master offset\s+-?\d+\s+(s\d+)\s+freq'
+  tag_filter: "daemon"
+  value_group: 1
+  state_group: 1
+  state_mapping:
+    s0: 10
+    s1: 20
+    s2: 30
+    s3: 40
+  color: "red"
+  marker: "o"
+  line_style: "-"
+  step: true  # Show state transitions as steps
 ```
 
 ### State Mapping Example
@@ -325,10 +363,21 @@ The HTML file uses Plotly.js and provides:
 - **Pan**: Click and drag to move around the plot
 - **Reset**: Double-click or use "Reset Zoom" button
 - **Toggle Series**: Click on legend items to show/hide series
-- **Hover**: Hover over data points to see exact values
+- **Hover**: Hover over data points to see exact X and Y values
 - **Export Data**: Download CSV directly from the browser
 
-Open the HTML file in any modern web browser to interact with the plot.
+### Viewing the Interactive Plot
+
+**Option 1: Local Viewing (Recommended)**
+Simply open the generated `plot.html` file in any modern web browser. The file is self-contained and includes all necessary JavaScript libraries via CDN.
+
+**Option 2: GitHub Pages (Optional)**
+If you want to view the interactive plot directly from GitHub:
+1. Enable GitHub Pages in your repository settings
+2. Commit the `plot.html` file to your repository
+3. Access it via: `https://<username>.github.io/<repo>/plot.html`
+
+*Note: GitHub README files cannot execute JavaScript, so the static PNG image is shown above. The interactive HTML version must be opened separately.*
 
 ## Data Export
 
