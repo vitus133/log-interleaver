@@ -75,7 +75,6 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 		}
 		seriesByAxis[axisIdx] = append(seriesByAxis[axisIdx], pattern.Name)
 	}
-	
 
 	// Create secondary Y-axis if needed
 	var rightAxis *plot.Axis
@@ -86,12 +85,12 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 
 	// Plot each series
 	colors := []color.Color{
-		color.RGBA{R: 31, G: 119, B: 180, A: 255}, // blue
+		color.RGBA{R: 31, G: 119, B: 180, A: 255},  // blue
 		color.RGBA{R: 255, G: 127, B: 14, A: 255},  // orange
-		color.RGBA{R: 44, G: 160, B: 44, A: 255},  // green
-		color.RGBA{R: 214, G: 39, B: 40, A: 255},  // red
+		color.RGBA{R: 44, G: 160, B: 44, A: 255},   // green
+		color.RGBA{R: 214, G: 39, B: 40, A: 255},   // red
 		color.RGBA{R: 148, G: 103, B: 189, A: 255}, // purple
-		color.RGBA{R: 140, G: 86, B: 75, A: 255},  // brown
+		color.RGBA{R: 140, G: 86, B: 75, A: 255},   // brown
 		color.RGBA{R: 227, G: 119, B: 194, A: 255}, // pink
 		color.RGBA{R: 127, G: 127, B: 127, A: 255}, // gray
 	}
@@ -126,6 +125,19 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 				xy[i].Y = pt.Value
 			}
 
+			// Build legend label with state mapping if available
+			legendLabel := seriesName
+			if patternCfg != nil && patternCfg.StateMapping != nil && len(patternCfg.StateMapping) > 0 {
+				// Create mapping string for legend
+				mappingParts := make([]string, 0, len(patternCfg.StateMapping))
+				for state, value := range patternCfg.StateMapping {
+					mappingParts = append(mappingParts, fmt.Sprintf("%s=%.0f", state, value))
+				}
+				// Sort for consistent display
+				sort.Strings(mappingParts)
+				legendLabel = fmt.Sprintf("%s (%s)", seriesName, strings.Join(mappingParts, ", "))
+			}
+
 			// Create line/scatter plot
 			var line *plotter.Line
 			var scatter *plotter.Scatter
@@ -143,10 +155,16 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 			if patternCfg != nil && patternCfg.Marker != "" {
 				// Adjust marker size based on type
 				switch patternCfg.Marker {
-				case "x", "+":
+				case "x", "+", "X":
 					markerRadius = vg.Points(4)
-				case "o":
+				case "o", "O", "circle":
 					markerRadius = vg.Points(3)
+				case "s", "S", "square":
+					markerRadius = vg.Points(3)
+				case "d", "D", "diamond":
+					markerRadius = vg.Points(4)
+				case ".", "point":
+					markerRadius = vg.Points(2)
 				}
 			}
 
@@ -158,46 +176,51 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 			scatter.GlyphStyle.Radius = markerRadius
 			scatter.GlyphStyle.Color = plotColor
 
-			// Create line plot
-			lineStyle := plotter.DefaultLineStyle
-			if patternCfg != nil && patternCfg.LineStyle != "" {
-				switch patternCfg.LineStyle {
-				case "-":
-					lineStyle = plotter.DefaultLineStyle
-				case "--":
-					lineStyle.Dashes = []vg.Length{vg.Points(5), vg.Points(5)}
-				case ":":
-					lineStyle.Dashes = []vg.Length{vg.Points(2), vg.Points(2)}
-				case "-.":
-					lineStyle.Dashes = []vg.Length{vg.Points(5), vg.Points(2), vg.Points(2), vg.Points(2)}
+			// Determine if we should draw lines
+			drawLines := true
+			if patternCfg != nil {
+				// If line_style is explicitly "none", don't draw lines
+				if patternCfg.LineStyle == "none" {
+					drawLines = false
 				}
+				// Otherwise, always draw lines (even if marker is set)
+				// User can set line_style: "none" explicitly for markers-only
 			}
-			lineStyle.Color = plotColor
-			lineStyle.Width = vg.Points(1)
 
-			line, err = plotter.NewLine(xy)
-			if err != nil {
-				return fmt.Errorf("failed to create line plot: %w", err)
+			// Create line plot (if needed)
+			if drawLines {
+				lineStyle := plotter.DefaultLineStyle
+				if patternCfg != nil && patternCfg.LineStyle != "" {
+					switch patternCfg.LineStyle {
+					case "-", "solid":
+						lineStyle = plotter.DefaultLineStyle
+					case "--", "dashed":
+						lineStyle.Dashes = []vg.Length{vg.Points(5), vg.Points(5)}
+					case ":", "dotted":
+						lineStyle.Dashes = []vg.Length{vg.Points(2), vg.Points(2)}
+					case "-.", "dashdot":
+						lineStyle.Dashes = []vg.Length{vg.Points(5), vg.Points(2), vg.Points(2), vg.Points(2)}
+					}
+				}
+				lineStyle.Color = plotColor
+				lineStyle.Width = vg.Points(1)
+
+				line, err = plotter.NewLine(xy)
+				if err != nil {
+					return fmt.Errorf("failed to create line plot: %w", err)
+				}
+				line.LineStyle = lineStyle
 			}
-			line.LineStyle = lineStyle
 
 			// Add to plot
-			p.Add(scatter, line)
-			
-			// Build legend label with state mapping if available
-			legendLabel := seriesName
-			if patternCfg != nil && patternCfg.StateMapping != nil && len(patternCfg.StateMapping) > 0 {
-				// Create mapping string for legend
-				mappingParts := make([]string, 0, len(patternCfg.StateMapping))
-				for state, value := range patternCfg.StateMapping {
-					mappingParts = append(mappingParts, fmt.Sprintf("%s=%.0f", state, value))
-				}
-				// Sort for consistent display
-				sort.Strings(mappingParts)
-				legendLabel = fmt.Sprintf("%s (%s)", seriesName, strings.Join(mappingParts, ", "))
+			if drawLines && line != nil {
+				p.Add(scatter, line)
+				p.Legend.Add(legendLabel, scatter, line)
+			} else {
+				// Markers only
+				p.Add(scatter)
+				p.Legend.Add(legendLabel, scatter)
 			}
-			
-			p.Legend.Add(legendLabel, scatter, line)
 
 			// Use right axis if specified
 			if axisIdx == 1 && rightAxis != nil {
@@ -262,7 +285,7 @@ func parseInterleavedLog(file *os.File) ([]*parser.LogLine, error) {
 // parseColor parses a color string (e.g., "blue", "red", "#FF0000") and returns a color.Color
 func parseColor(colorStr string) color.Color {
 	colorStr = strings.ToLower(strings.TrimSpace(colorStr))
-	
+
 	// Named colors
 	switch colorStr {
 	case "black":
@@ -292,7 +315,7 @@ func parseColor(colorStr string) color.Color {
 	case "gray", "grey":
 		return color.RGBA{R: 128, G: 128, B: 128, A: 255}
 	}
-	
+
 	// Try parsing as hex color (#RRGGBB)
 	if strings.HasPrefix(colorStr, "#") && len(colorStr) == 7 {
 		var r, g, b uint8
@@ -300,6 +323,6 @@ func parseColor(colorStr string) color.Color {
 			return color.RGBA{R: r, G: g, B: b, A: 255}
 		}
 	}
-	
+
 	return nil // Return nil if color cannot be parsed
 }

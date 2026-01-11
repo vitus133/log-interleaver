@@ -56,6 +56,9 @@ go build ./cmd/log-interleaver
 - `-visualize`: Generate visualization plot from interleaved logs
 - `-config <file>`: Path to visualization configuration file (YAML format, default: `config.yaml`)
 - `-plot-output <file>`: Output path for plot image (default: `plot.png`)
+- `-export-csv <file>`: Export time series data to CSV format (for use in Excel, Python pandas, etc.)
+- `-export-json <file>`: Export time series data to JSON format
+- `-export-html <file>`: Export interactive HTML plot using Plotly.js (allows zooming, panning, and interactive exploration)
 
 ## Output Format
 
@@ -147,11 +150,50 @@ patterns:
 - `value_group`: Capture group index (1-based) containing the numeric value to extract
 - `state_group`: Optional capture group for state values (e.g., "s0", "s2") - if same as value_group, uses state mapping
 - `state_mapping`: Optional map of state strings to numeric values (e.g., `{"s0": 10, "s1": 20, "s2": 30, "s3": 40}`). Required when extracting non-numeric state values. If not provided and state_group matches value_group, will attempt to extract numeric part from state string (e.g., "s0" -> 0).
-- `color`: Plot color (named colors like "blue", "red", or hex like "#FF0000")
-- `marker`: Marker style (".", "o", "x", "+")
-- `line_style`: Line style ("-", "--", ":", "-.")
+- `color`: Plot color (named colors like "blue", "red", "green", "orange", "purple", "brown", "cyan", "magenta", "teal", "black", "pink", "gray", or hex like "#FF0000")
+- `marker`: Marker style. Supported values:
+  - `"."` or `"point"`: Small dot
+  - `"o"` or `"circle"`: Circle
+  - `"x"` or `"X"`: Cross/X mark
+  - `"s"` or `"square"`: Square
+  - `"d"` or `"diamond"`: Diamond
+  - `"+"`: Plus sign
+  - Empty string: No marker (lines only)
+- `line_style`: Line style. Supported values:
+  - `"-"` or `"solid"`: Solid line (default)
+  - `"--"` or `"dashed"`: Dashed line
+  - `":"` or `"dotted"`: Dotted line
+  - `"-."` or `"dashdot"`: Dash-dot line
+  - `"none"`: No line (markers only)
+  - Empty string or omitted: Defaults to solid line (even if marker is set)
 - `yaxis_label`: Y-axis label for this series
 - `yaxis_index`: Which Y-axis to use (0=left, 1=right)
+
+### Display Modes
+
+The combination of `marker` and `line_style` determines how the series is displayed:
+
+- **Lines + Markers**: Set both `marker` and `line_style` (or just `line_style` with default marker)
+- **Markers Only**: Set `marker` and explicitly set `line_style: "none"`
+- **Lines Only**: Set `line_style` and omit `marker` (or set `marker: ""`)
+
+Examples:
+```yaml
+# Markers only (no connecting lines)
+- name: "My Series"
+  marker: "o"
+  line_style: "none"  # or omit line_style
+
+# Lines only (no markers)
+- name: "My Series"
+  marker: ""  # or omit marker
+  line_style: "--"
+
+# Both lines and markers
+- name: "My Series"
+  marker: "x"
+  line_style: "-"
+```
 
 ### State Mapping Example
 
@@ -174,6 +216,31 @@ For patterns that extract state values (like "s0", "s1", "s2", "s3"), use `state
 ```
 
 This will map state "s0" to 10, "s1" to 20, "s2" to 30, and "s3" to 40 in the plot.
+
+### Display Modes: Markers, Lines, or Both
+
+You can control how data points are displayed:
+
+**Markers Only (no connecting lines):**
+```yaml
+- name: "My Series"
+  marker: "o"
+  line_style: "none"  # Must explicitly set to "none"
+```
+
+**Lines Only (no markers):**
+```yaml
+- name: "My Series"
+  marker: ""  # or omit marker entirely
+  line_style: "--"
+```
+
+**Both Lines and Markers (default):**
+```yaml
+- name: "My Series"
+  marker: "x"
+  line_style: "-"
+```
 
 ### Additional Pattern Examples
 
@@ -230,3 +297,51 @@ This makes it easy to understand what the numeric values represent on the plot.
 ```
 
 The visualization extracts metrics based on the configured patterns and displays them as time series, making it easy to analyze PTP performance over time.
+
+## Interactive Visualization
+
+For interactive exploration with zooming, panning, and data selection capabilities, use the HTML export option:
+
+```bash
+# Generate interactive HTML plot
+./log-interleaver -logs logs -export-html plot.html -config config.yaml
+```
+
+The HTML file uses Plotly.js and provides:
+- **Zoom**: Click and drag to select a region, or use zoom buttons
+- **Pan**: Click and drag to move around the plot
+- **Reset**: Double-click or use "Reset Zoom" button
+- **Toggle Series**: Click on legend items to show/hide series
+- **Hover**: Hover over data points to see exact values
+- **Export Data**: Download CSV directly from the browser
+
+Open the HTML file in any modern web browser to interact with the plot.
+
+## Data Export
+
+You can also export the time series data for use in external tools:
+
+```bash
+# Export to CSV (for Excel, Python pandas, etc.)
+./log-interleaver -logs logs -export-csv data.csv -config config.yaml
+
+# Export to JSON (for programmatic access)
+./log-interleaver -logs logs -export-json data.json -config config.yaml
+```
+
+The CSV format includes:
+- `Time`: RFC3339 timestamp
+- `TimeOffsetSeconds`: Time offset in seconds from the first data point
+- One column per series with values at each timestamp
+
+The JSON format includes:
+- Metadata (title, axis labels, start time)
+- Array of series with X (time offsets) and Y (values) arrays
+- State mappings for series that use them
+
+You can load these files into:
+- **Python**: Use pandas (`pd.read_csv()`) or json module
+- **Excel**: Open CSV directly
+- **R**: Use `read.csv()` or `jsonlite`
+- **MATLAB**: Use `readtable()` or `jsondecode()`
+- **Any plotting library**: Matplotlib, Plotly, D3.js, etc.
