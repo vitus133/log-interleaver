@@ -127,13 +127,19 @@ func GenerateInteractiveHTML(lines []*parser.LogLine, configPath, outputPath str
                 data.xaxis_label + ': %{x:.6f}<br>' +
                 yLabel + ': %{y:.6f}<extra></extra>';
             
+            // Format Y values to use ASCII minus sign
+            const formattedY = s.y.map(val => val.toFixed(6).replace(/\u2212/g, '-'));
+            
             const trace = {
                 x: s.x,
                 y: s.y,
+                customdata: formattedY.map((val, idx) => [val]),  // Store formatted Y values for hover
                 name: legendName,
                 type: 'scatter',
                 mode: s.mode || 'lines+markers',
-                hovertemplate: hoverTemplate,
+                hovertemplate: '<b>%{fullData.name}</b><br>' +
+                    data.xaxis_label + ': %{x:.6f}<br>' +
+                    yLabel + ': %{customdata[0]}<extra></extra>',
                 hoverlabel: {
                     namelength: -1  // Don't truncate series names
                 },
@@ -183,6 +189,117 @@ func GenerateInteractiveHTML(lines []*parser.LogLine, configPath, outputPath str
             return trace;
         });
         
+        // Set Y-axis configuration
+        const yaxisConfig = {
+            title: data.yaxis_label,
+            showgrid: true,
+            gridcolor: '#e0e0e0',
+            tickmode: 'linear'
+        };
+        
+        // Set Y-axis range if configured
+        let min = null, max = null;
+        if (data.y_range !== undefined && data.y_range !== null) {
+            // Symmetric range: +/- value
+            min = -data.y_range;
+            max = data.y_range;
+            yaxisConfig.range = [min, max];
+        } else if (data.y_min !== undefined || data.y_max !== undefined) {
+            // Individual min/max if specified
+            min = data.y_min !== undefined ? data.y_min : null;
+            max = data.y_max !== undefined ? data.y_max : null;
+            yaxisConfig.range = [min, max];
+        }
+        
+        // Fix negative number display: Plotly uses Unicode minus (U+2212) by default
+        // Use custom formatter to replace with ASCII minus
+        yaxisConfig.tickformat = function(d) {
+            return d.toFixed(0).replace(/\u2212/g, '-');
+        };
+        
+        // Check if custom tick options are configured
+        const hasTickSpacing = data.y_tick_spacing !== undefined && data.y_tick_spacing !== null && !isNaN(data.y_tick_spacing);
+        const hasTickCount = data.y_tick_count !== undefined && data.y_tick_count !== null && !isNaN(data.y_tick_count);
+        const hasRange = min !== null && max !== null;
+        
+        // Determine the effective range for tick generation
+        let effectiveMin = min, effectiveMax = max;
+        if (effectiveMin === null || effectiveMax === null) {
+            // If range not explicitly set, determine from data
+            let dataMin = Infinity, dataMax = -Infinity;
+            series.forEach(s => {
+                if (s.y && s.y.length > 0) {
+                    const seriesMin = Math.min(...s.y);
+                    const seriesMax = Math.max(...s.y);
+                    if (seriesMin < dataMin) dataMin = seriesMin;
+                    if (seriesMax > dataMax) dataMax = seriesMax;
+                }
+            });
+            if (isFinite(dataMin) && isFinite(dataMax)) {
+                effectiveMin = dataMin;
+                effectiveMax = dataMax;
+            }
+        }
+        
+        // Generate ticks if we have a valid range
+        if (effectiveMin !== null && effectiveMax !== null && effectiveMax > effectiveMin) {
+            let spacing = null;
+            
+            if (hasTickSpacing) {
+                // Use custom spacing
+                spacing = Number(data.y_tick_spacing);
+            } else if (hasTickCount) {
+                // Use custom count
+                spacing = (effectiveMax - effectiveMin) / (Number(data.y_tick_count) - 1);
+            } else {
+                // Calculate automatic spacing for ~8-10 ticks
+                const dataRange = effectiveMax - effectiveMin;
+                let targetSpacing = dataRange / 10;
+                // Round to nice numbers (powers of 1, 2, 5, 10, etc.)
+                if (targetSpacing > 0) {
+                    const magnitude = Math.pow(10, Math.floor(Math.log10(targetSpacing)));
+                    const normalized = targetSpacing / magnitude;
+                    let multiplier = 1;
+                    if (normalized <= 1) multiplier = 1;
+                    else if (normalized <= 2) multiplier = 2;
+                    else if (normalized <= 5) multiplier = 5;
+                    else multiplier = 10;
+                    spacing = multiplier * magnitude;
+                }
+            }
+            
+            // Generate tick values if we have valid spacing
+            if (spacing !== null && !isNaN(spacing) && spacing > 0 && isFinite(spacing)) {
+                const tickvals = [];
+                const ticktext = [];
+                // Calculate starting value aligned to spacing
+                let startVal = Math.floor(effectiveMin / spacing) * spacing;
+                if (startVal > effectiveMin) {
+                    startVal -= spacing;
+                }
+                // Generate ticks from start to max
+                let val = startVal;
+                const maxVal = effectiveMax + spacing * 0.001; // Add small buffer
+                while (val <= maxVal) {
+                    tickvals.push(val);
+                    // Format with ASCII minus sign
+                    const formatted = val.toFixed(0);
+                    ticktext.push(formatted.replace(/\u2212/g, '-'));
+                    val += spacing;
+                }
+                
+                // Use explicit ticks if we have a reasonable number (2-20 ticks)
+                if (tickvals.length >= 2 && tickvals.length <= 20) {
+                    yaxisConfig.tickmode = 'array';
+                    yaxisConfig.tickvals = tickvals;
+                    yaxisConfig.ticktext = ticktext;
+                } else {
+                    // Fallback to dtick for spacing
+                    yaxisConfig.dtick = spacing;
+                }
+            }
+        }
+        
         const layout = {
             title: data.title,
             xaxis: {
@@ -190,11 +307,7 @@ func GenerateInteractiveHTML(lines []*parser.LogLine, configPath, outputPath str
                 showgrid: true,
                 gridcolor: '#e0e0e0'
             },
-            yaxis: {
-                title: data.yaxis_label,
-                showgrid: true,
-                gridcolor: '#e0e0e0'
-            },
+            yaxis: yaxisConfig,
             hovermode: 'closest',
             hoverlabel: {
                 namelength: -1,  // Don't truncate series names in hover

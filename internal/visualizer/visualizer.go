@@ -6,6 +6,7 @@ import (
 	"log-interleaver/internal/config"
 	"log-interleaver/internal/parser"
 	"log-interleaver/pkg/pattern"
+	"math"
 	"os"
 	"sort"
 	"strings"
@@ -32,17 +33,20 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 	patternConfigs := make([]pattern.PatternConfig, len(v.config.Patterns))
 	for i, p := range v.config.Patterns {
 		patternConfigs[i] = pattern.PatternConfig{
-			Name:         p.Name,
-			Regex:        p.Regex,
-			TagFilter:    p.TagFilter,
-			ValueGroup:   p.ValueGroup,
-			StateGroup:   p.StateGroup,
-			StateMapping: p.StateMapping,
-			Color:        p.Color,
-			LineStyle:    p.LineStyle,
-			Marker:       p.Marker,
-			YAxisLabel:   p.YAxisLabel,
-			YAxisIndex:   p.YAxisIndex,
+			Name:                    p.Name,
+			Regex:                   p.Regex,
+			TagFilter:               p.TagFilter,
+			ValueGroup:              p.ValueGroup,
+			StateGroup:              p.StateGroup,
+			DeviceGroup:             p.DeviceGroup,
+			StateMapping:            p.StateMapping,
+			ValueMultiplier:         p.ValueMultiplier,
+			ConvertNanosecondOffset: p.ConvertNanosecondOffset,
+			Color:                   p.Color,
+			LineStyle:               p.LineStyle,
+			Marker:                  p.Marker,
+			YAxisLabel:              p.YAxisLabel,
+			YAxisIndex:              p.YAxisIndex,
 		}
 	}
 
@@ -64,7 +68,93 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 	p.X.Label.Text = v.config.XAxisLabel
 	p.Y.Label.Text = v.config.YAxisLabel
 
+	// Set Y-axis range if configured
+	var yMin, yMax float64
+	if v.config.YRange != nil {
+		// Symmetric range: +/- value
+		rangeVal := *v.config.YRange
+		yMin = -rangeVal
+		yMax = rangeVal
+		p.Y.Min = yMin
+		p.Y.Max = yMax
+	} else {
+		// Individual min/max if specified
+		if v.config.YMin != nil {
+			yMin = *v.config.YMin
+			p.Y.Min = yMin
+		}
+		if v.config.YMax != nil {
+			yMax = *v.config.YMax
+			p.Y.Max = yMax
+		}
+	}
+
+	// Set Y-axis tick spacing - generate ticks if range is set or custom spacing is configured
+	actualMin := p.Y.Min
+	actualMax := p.Y.Max
+	hasExplicitRange := actualMin != 0 || actualMax != 0 || v.config.YRange != nil || v.config.YMin != nil || v.config.YMax != nil
+
+	if v.config.YTickSpacing != nil {
+		// Use custom tick marker with specified spacing
+		spacing := *v.config.YTickSpacing
+		if hasExplicitRange {
+			tickValues := generateTickValues(actualMin, actualMax, spacing)
+			if len(tickValues) > 0 {
+				ticks := make([]plot.Tick, len(tickValues))
+				for i, val := range tickValues {
+					ticks[i] = plot.Tick{Value: val, Label: fmt.Sprintf("%.0f", val)}
+				}
+				p.Y.Tick.Marker = plot.ConstantTicks(ticks)
+			}
+		}
+	} else if v.config.YTickCount != nil {
+		// Use specified number of ticks
+		count := *v.config.YTickCount
+		if count > 0 && hasExplicitRange {
+			spacing := (actualMax - actualMin) / float64(count-1)
+			tickValues := generateTickValues(actualMin, actualMax, spacing)
+			if len(tickValues) > 0 {
+				ticks := make([]plot.Tick, len(tickValues))
+				for i, val := range tickValues {
+					ticks[i] = plot.Tick{Value: val, Label: fmt.Sprintf("%.0f", val)}
+				}
+				p.Y.Tick.Marker = plot.ConstantTicks(ticks)
+			}
+		}
+	} else if hasExplicitRange {
+		// Automatic tick generation when range is set but no custom spacing
+		// Calculate reasonable tick spacing for ~8-10 ticks
+		rangeVal := actualMax - actualMin
+		if rangeVal > 0 {
+			targetSpacing := rangeVal / 10.0
+			// Round to nice numbers (powers of 1, 2, 5, 10, etc.)
+			magnitude := math.Pow(10, math.Floor(math.Log10(targetSpacing)))
+			normalized := targetSpacing / magnitude
+			var multiplier float64
+			if normalized <= 1 {
+				multiplier = 1
+			} else if normalized <= 2 {
+				multiplier = 2
+			} else if normalized <= 5 {
+				multiplier = 5
+			} else {
+				multiplier = 10
+			}
+			spacing := multiplier * magnitude
+
+			tickValues := generateTickValues(actualMin, actualMax, spacing)
+			if len(tickValues) > 0 && len(tickValues) <= 20 {
+				ticks := make([]plot.Tick, len(tickValues))
+				for i, val := range tickValues {
+					ticks[i] = plot.Tick{Value: val, Label: fmt.Sprintf("%.0f", val)}
+				}
+				p.Y.Tick.Marker = plot.ConstantTicks(ticks)
+			}
+		}
+	}
+
 	// Group series by Y-axis index
+	// For device-based series, we need to find all series that start with the pattern name
 	seriesByAxis := make(map[int][]string)
 	for _, pattern := range v.config.Patterns {
 		axisIdx := pattern.YAxisIndex
@@ -74,7 +164,12 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 		if _, ok := seriesByAxis[axisIdx]; !ok {
 			seriesByAxis[axisIdx] = make([]string, 0)
 		}
-		seriesByAxis[axisIdx] = append(seriesByAxis[axisIdx], pattern.Name)
+		// Find all series that match this pattern (including device-based ones)
+		for seriesName := range metrics {
+			if seriesName == pattern.Name || strings.HasPrefix(seriesName, pattern.Name+" ") {
+				seriesByAxis[axisIdx] = append(seriesByAxis[axisIdx], seriesName)
+			}
+		}
 	}
 
 	// Create secondary Y-axis if needed
@@ -105,9 +200,10 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 			}
 
 			// Find pattern config for styling
+			// Match by exact name or by prefix (for device-based series)
 			var patternCfg *config.PatternConfig
 			for i := range v.config.Patterns {
-				if v.config.Patterns[i].Name == seriesName {
+				if v.config.Patterns[i].Name == seriesName || strings.HasPrefix(seriesName, v.config.Patterns[i].Name+" ") {
 					patternCfg = &v.config.Patterns[i]
 					break
 				}
@@ -121,25 +217,47 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 			// Convert to plotter.XYs
 			var xy plotter.XYs
 			startTime := points[0].Time
-			
+
 			// Check if step plot is requested
 			useStep := patternCfg != nil && patternCfg.Step
-			
-			if useStep && len(points) > 1 {
-				// For step plots, create horizontal-vertical steps
-				// Each point needs a horizontal segment to the next x value
-				xy = make(plotter.XYs, 0, len(points)*2-1)
-				for i, pt := range points {
-					x := pt.Time.Sub(startTime).Seconds()
-					y := pt.Value
-					
-					// Add the point
-					xy = append(xy, plotter.XY{X: x, Y: y})
-					
-					// Add horizontal segment to next point (if not last point)
-					if i < len(points)-1 {
-						nextX := points[i+1].Time.Sub(startTime).Seconds()
-						xy = append(xy, plotter.XY{X: nextX, Y: y})
+
+			if useStep {
+				if len(points) > 1 {
+					// For step plots with multiple points, create horizontal-vertical steps
+					// Each point needs a horizontal segment to the next x value
+					xy = make(plotter.XYs, 0, len(points)*2-1)
+					for i, pt := range points {
+						x := pt.Time.Sub(startTime).Seconds()
+						y := pt.Value
+
+						// Add the point
+						xy = append(xy, plotter.XY{X: x, Y: y})
+
+						// Add horizontal segment to next point (if not last point)
+						if i < len(points)-1 {
+							nextX := points[i+1].Time.Sub(startTime).Seconds()
+							xy = append(xy, plotter.XY{X: nextX, Y: y})
+						}
+					}
+				} else if len(points) == 1 {
+					// For step plots with a single point, extend it to the end of the time range
+					// Find the maximum time across all metrics to extend the step
+					maxTime := points[0].Time
+					for _, otherPoints := range metrics {
+						if len(otherPoints) > 0 {
+							lastPoint := otherPoints[len(otherPoints)-1]
+							if lastPoint.Time.After(maxTime) {
+								maxTime = lastPoint.Time
+							}
+						}
+					}
+					// Create two points: one at the actual time, one at the max time
+					x1 := points[0].Time.Sub(startTime).Seconds()
+					x2 := maxTime.Sub(startTime).Seconds()
+					y := points[0].Value
+					xy = plotter.XYs{
+						{X: x1, Y: y},
+						{X: x2, Y: y},
 					}
 				}
 			} else {
@@ -285,6 +403,20 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 	}
 
 	return nil
+}
+
+// generateTickValues generates tick values from min to max with specified spacing
+func generateTickValues(min, max, spacing float64) []float64 {
+	if spacing <= 0 {
+		return nil
+	}
+	var values []float64
+	// Start from the first tick >= min
+	start := math.Ceil(min/spacing) * spacing
+	for val := start; val <= max+spacing*0.001; val += spacing {
+		values = append(values, val)
+	}
+	return values
 }
 
 // GeneratePlotFromFile generates a plot from an interleaved log file

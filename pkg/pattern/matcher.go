@@ -23,17 +23,20 @@ type PatternMatcher struct {
 
 // CompiledPattern is a compiled regex pattern with metadata
 type CompiledPattern struct {
-	Name         string
-	Regex        *regexp.Regexp
-	TagFilter    string
-	ValueGroup   int
-	StateGroup   int
-	StateMapping map[string]float64
-	Color        string
-	LineStyle    string
-	Marker       string
-	YAxisLabel   string
-	YAxisIndex   int
+	Name           string
+	Regex          *regexp.Regexp
+	TagFilter      string
+	ValueGroup     int
+	StateGroup     int
+	DeviceGroup    int
+	StateMapping   map[string]float64
+	ValueMultiplier float64
+	ConvertNanosecondOffset bool
+	Color          string
+	LineStyle      string
+	Marker         string
+	YAxisLabel     string
+	YAxisIndex     int
 }
 
 // NewPatternMatcher creates a new pattern matcher from configuration
@@ -47,17 +50,20 @@ func NewPatternMatcher(patterns []PatternConfig) (*PatternMatcher, error) {
 		}
 
 		compiled = append(compiled, CompiledPattern{
-			Name:         p.Name,
-			Regex:        regex,
-			TagFilter:    p.TagFilter,
-			ValueGroup:   p.ValueGroup,
-			StateGroup:   p.StateGroup,
-			StateMapping: p.StateMapping,
-			Color:        p.Color,
-			LineStyle:    p.LineStyle,
-			Marker:       p.Marker,
-			YAxisLabel:   p.YAxisLabel,
-			YAxisIndex:   p.YAxisIndex,
+			Name:           p.Name,
+			Regex:          regex,
+			TagFilter:      p.TagFilter,
+			ValueGroup:     p.ValueGroup,
+			StateGroup:     p.StateGroup,
+			DeviceGroup:    p.DeviceGroup,
+			StateMapping:   p.StateMapping,
+			ValueMultiplier: p.ValueMultiplier,
+			ConvertNanosecondOffset: p.ConvertNanosecondOffset,
+			Color:          p.Color,
+			LineStyle:      p.LineStyle,
+			Marker:         p.Marker,
+			YAxisLabel:     p.YAxisLabel,
+			YAxisIndex:     p.YAxisIndex,
 		})
 	}
 
@@ -66,17 +72,20 @@ func NewPatternMatcher(patterns []PatternConfig) (*PatternMatcher, error) {
 
 // PatternConfig is the configuration for a pattern (imported from config package)
 type PatternConfig struct {
-	Name         string
-	Regex        string
-	TagFilter    string
-	ValueGroup   int
-	StateGroup   int
-	StateMapping map[string]float64
-	Color        string
-	LineStyle    string
-	Marker       string
-	YAxisLabel   string
-	YAxisIndex   int
+	Name           string
+	Regex          string
+	TagFilter      string
+	ValueGroup     int
+	StateGroup     int
+	DeviceGroup    int
+	StateMapping   map[string]float64
+	ValueMultiplier float64
+	ConvertNanosecondOffset bool
+	Color          string
+	LineStyle      string
+	Marker         string
+	YAxisLabel     string
+	YAxisIndex     int
 }
 
 // ExtractMetrics processes log lines and extracts metrics based on patterns
@@ -115,6 +124,12 @@ func (pm *PatternMatcher) ExtractMetrics(lines []*parser.LogLine) (map[string][]
 				state = matches[pattern.StateGroup]
 			}
 			
+			// Extract device if configured
+			device := ""
+			if pattern.DeviceGroup > 0 && pattern.DeviceGroup < len(matches) {
+				device = matches[pattern.DeviceGroup]
+			}
+			
 			var value float64
 			var valueParsed bool
 			
@@ -149,6 +164,17 @@ func (pm *PatternMatcher) ExtractMetrics(lines []*parser.LogLine) (map[string][]
 				}
 			} else {
 				// Regular numeric value - try to parse as float/int
+				// Special handling for nanosecond offset conversion: pad fractional nanoseconds to 9 digits
+				if pattern.ConvertNanosecondOffset {
+					// Pad the fractional part to 9 digits (nanoseconds)
+					for len(valueStr) < 9 {
+						valueStr = valueStr + "0"
+					}
+					if len(valueStr) > 9 {
+						valueStr = valueStr[:9]
+					}
+				}
+				
 				var err error
 				value, err = strconv.ParseFloat(valueStr, 64)
 				if err != nil {
@@ -164,14 +190,35 @@ func (pm *PatternMatcher) ExtractMetrics(lines []*parser.LogLine) (map[string][]
 				}
 			}
 
+			// Convert nanosecond offset if configured (for fractional nanoseconds >= 500000000)
+			if pattern.ConvertNanosecondOffset {
+				// If value is >= 500000000 (half a second in nanoseconds), subtract 1000000000 to get negative offset
+				if value >= 500000000 && value < 1000000000 {
+					value = value - 1000000000
+				}
+			}
+
+			// Apply value multiplier if configured (e.g., convert ps to ns)
+			// Apply multiplier if it's set (not zero and not identity)
+			// Note: 0.001 is used to convert picoseconds to nanoseconds
+			if pattern.ValueMultiplier != 0 && pattern.ValueMultiplier != 1.0 {
+				value = value * pattern.ValueMultiplier
+			}
+
+			// Determine series name: if device is extracted, append it to the pattern name
+			seriesName := pattern.Name
+			if device != "" {
+				seriesName = fmt.Sprintf("%s %s", pattern.Name, device)
+			}
+
 			point := MetricPoint{
 				Time:       line.Timestamp.Time,
 				Value:      value,
 				State:      state,
-				SeriesName: pattern.Name,
+				SeriesName: seriesName,
 			}
 
-			metrics[pattern.Name] = append(metrics[pattern.Name], point)
+			metrics[seriesName] = append(metrics[seriesName], point)
 		}
 	}
 

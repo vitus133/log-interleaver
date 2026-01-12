@@ -39,25 +39,31 @@ func (p *Parser) ParseLine(line string, lineNum int) *LogLine {
 	}
 
 	// Try to parse different timestamp formats
-	// 1. Try absolute format (I0111 14:03:55.976211)
+	// 1. Try JSON ISO timestamp format ("timestamp":"2026-01-12T11:36:14.788270397Z")
+	if ts, err := timestamp.ParseJSONTimestamp(line); err == nil {
+		logLine.Timestamp = ts
+		return logLine
+	}
+
+	// 2. Try absolute format (I0111 14:03:55.976211)
 	if ts, err := timestamp.ParseAbsolute(line); err == nil {
 		logLine.Timestamp = ts
 		return logLine
 	}
 
-	// 2. Try full date-time format (2026-01-11 09:04:29)
+	// 3. Try full date-time format (2026-01-11 09:04:29)
 	if ts, err := timestamp.ParseFullDateTime(line); err == nil {
 		logLine.Timestamp = ts
 		return logLine
 	}
 
-	// 3. Try Linux/Unix timestamp format (T-BC[1768140305]:)
+	// 4. Try Linux/Unix timestamp format (T-BC[1768140305]:)
 	if ts, err := timestamp.ParseLinux(line); err == nil {
 		logLine.Timestamp = ts
 		return logLine
 	}
 
-	// 4. Try uptime format (ptp4l[275313.748]:)
+	// 5. Try uptime format (ptp4l[275313.748]:)
 	if uptime, ok := timestamp.ParseUptime(line); ok {
 		logLine.UptimeSec = uptime
 		// Timestamp will be resolved later using nearest absolute timestamp

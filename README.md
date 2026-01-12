@@ -139,6 +139,15 @@ yaxis_label: "Value"
 width: 16
 height: 10
 dpi: 100
+# Optional: Set Y-axis range to limit the displayed Y values
+# Option 1: Symmetric range (recommended for offset plots)
+y_range: 2000  # Sets Y-axis to [-2000, 2000]
+# Option 2: Asymmetric range
+# y_min: -2000  # Minimum Y-axis value
+# y_max: 2000   # Maximum Y-axis value
+# Optional: Control Y-axis tick spacing to reduce label density
+y_tick_spacing: 200  # Spacing between ticks (e.g., -2000, -1800, -1600, ..., 1800, 2000)
+# y_tick_count: 10  # Alternative: number of ticks (use this OR y_tick_spacing)
 
 patterns:
   - name: "E830 offset"
@@ -179,6 +188,25 @@ patterns:
 - `step`: Boolean (optional). If `true`, creates a step plot that holds the Y value horizontally until the next data point, then steps vertically. Useful for discrete state changes or constant values between measurements. Default: `false`
 - `yaxis_label`: Y-axis label for this series
 - `yaxis_index`: Which Y-axis to use (0=left, 1=right)
+
+### Y-Axis Range Configuration
+
+You can limit the Y-axis range to focus on a specific value range:
+
+- **`y_range`**: Symmetric range (recommended). Sets Y-axis to `[-y_range, y_range]`. Example: `y_range: 2000` sets the range to `[-2000, 2000]`.
+- **`y_min`**: Minimum Y-axis value (use with `y_max` for asymmetric range)
+- **`y_max`**: Maximum Y-axis value (use with `y_min` for asymmetric range)
+
+**Note**: Use either `y_range` (symmetric) OR `y_min`/`y_max` (asymmetric), not both.
+
+### Y-Axis Tick Spacing Configuration
+
+When using a limited Y-axis range, you may want to control the tick spacing to reduce label density and improve readability:
+
+- **`y_tick_spacing`**: Spacing between Y-axis ticks. Example: `y_tick_spacing: 50` creates ticks every 50 units (e.g., -300, -250, -200, ..., 250, 300).
+- **`y_tick_count`**: Number of Y-axis ticks (alternative to spacing). Example: `y_tick_count: 10` creates 10 evenly spaced ticks across the Y-axis range.
+
+**Note**: Use either `y_tick_spacing` OR `y_tick_count`, not both. If neither is specified, the plot library will automatically determine tick spacing (which may result in too many ticks for small ranges).
 
 ### Display Modes
 

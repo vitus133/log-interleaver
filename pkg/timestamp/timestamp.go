@@ -115,6 +115,45 @@ func ParseFullDateTime(line string) (*Timestamp, error) {
 	}, nil
 }
 
+// ParseJSONTimestamp parses JSON ISO timestamp format: "timestamp":"2026-01-12T11:36:14.788270397Z"
+func ParseJSONTimestamp(line string) (*Timestamp, error) {
+	// Pattern: "timestamp":"YYYY-MM-DDTHH:MM:SS.nanosecondsZ"
+	re := regexp.MustCompile(`"timestamp"\s*:\s*"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d+)Z"`)
+	matches := re.FindStringSubmatch(line)
+	if len(matches) != 8 {
+		return nil, fmt.Errorf("invalid JSON timestamp format")
+	}
+
+	year, _ := strconv.Atoi(matches[1])
+	month, _ := strconv.Atoi(matches[2])
+	day, _ := strconv.Atoi(matches[3])
+	hour, _ := strconv.Atoi(matches[4])
+	min, _ := strconv.Atoi(matches[5])
+	sec, _ := strconv.Atoi(matches[6])
+	nanosStr := matches[7]
+
+	// Parse nanoseconds (can be variable length, pad to 9 digits)
+	nanos := 0
+	if len(nanosStr) > 0 {
+		// Pad or truncate to 9 digits
+		if len(nanosStr) > 9 {
+			nanosStr = nanosStr[:9]
+		}
+		// Pad with zeros if needed
+		for len(nanosStr) < 9 {
+			nanosStr += "0"
+		}
+		nanos, _ = strconv.Atoi(nanosStr)
+	}
+
+	t := time.Date(year, time.Month(month), day, hour, min, sec, nanos, time.UTC)
+
+	return &Timestamp{
+		Time: t,
+		Type: TypeAbsolute,
+	}, nil
+}
+
 // FormatTimestamp formats a timestamp for output: "14:05:54.000549"
 func FormatTimestamp(t time.Time) string {
 	return t.Format("15:04:05.000000")

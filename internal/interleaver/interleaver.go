@@ -72,10 +72,22 @@ func (i *Interleaver) Process() ([]*parser.LogLine, error) {
 		linesByTag[tag] = lines
 	}
 
-	// Resolve uptime timestamps for daemon.txt lines
-	if daemonLines, ok := linesByTag["daemon"]; ok && len(daemonLines) > 0 {
-		if err := parser.ResolveUptimeTimestamps(daemonLines); err != nil {
-			return nil, fmt.Errorf("failed to resolve uptime timestamps: %w", err)
+	// Resolve uptime timestamps for all tags that have uptime timestamps
+	for _, lines := range linesByTag {
+		// Check if this tag has any uptime timestamps
+		hasUptime := false
+		for _, line := range lines {
+			if line.UptimeSec > 0 {
+				hasUptime = true
+				break
+			}
+		}
+		if hasUptime {
+			if err := parser.ResolveUptimeTimestamps(lines); err != nil {
+				// Log warning but continue - some tags might not have absolute timestamps
+				// This is okay if the tag doesn't need uptime resolution
+				continue
+			}
 		}
 	}
 
