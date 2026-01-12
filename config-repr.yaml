@@ -1,0 +1,166 @@
+title: "T-BC Log Analysis"
+xaxis_label: "Time (seconds from start)"
+yaxis_label: "Value"
+width: 16
+height: 10
+dpi: 100
+# Optional: Set Y-axis range
+y_range: 300  # Symmetric range: +/- 300 (use this OR y_min/y_max)
+# y_min: -2000   # Minimum Y-axis value (use with y_max)
+# y_max: 2000    # Maximum Y-axis value (use with y_min)
+# Optional: Control Y-axis tick spacing to reduce label density
+# y_tick_spacing: 50  # Spacing between Y-axis ticks (e.g., 50 for ticks every 50 units)
+# y_tick_count: 10  # Alternative: number of Y-axis ticks (use this OR y_tick_spacing)
+
+patterns:
+  # E830 offset series
+  - name: "E830 offset (ptp4l in free-running mode)"
+    regex: 'E830 ptp4l\[.*\]: master offset\s+(-?\d+)\s+s\d+\s+freq'
+    tag_filter: "e830"
+    value_group: 1
+    color: "blue"
+    marker: "."
+    line_style: "-"
+    yaxis_label: "Offset (ns)"
+    yaxis_index: 0
+
+  # E825 offset series
+  - name: "E825 offset (ptp4l in free-running mode)"
+    regex: 'E825 ptp4l\[.*\]: master offset\s+(-?\d+)\s+s\d+\s+freq'
+    tag_filter: "e825"
+    value_group: 1
+    color: "red"
+    marker: "."
+    line_style: "-"
+    yaxis_label: "Offset (ns)"
+    yaxis_index: 0
+
+
+
+  # TR (dut) offset series
+  - name: "dut TR offset"
+    regex: 'ptp4l\[.*\]: \[ptp4l\.\d+\.config:\d+\] master offset\s+(-?\d+)\s+s\d+\s+freq'
+    tag_filter: "dut"
+    value_group: 1
+    color: "purple"
+    marker: "."
+    line_style: "-"
+    yaxis_label: "Offset (ns)"
+    yaxis_index: 0
+
+  # TR state series (map state strings to numeric values)
+  - name: "TR state"
+    regex: 'ptp4l\[.*\]: \[ptp4l\.\d+\.config:\d+\] master offset\s+-?\d+\s+(s\d+)\s+freq'
+    tag_filter: "daemon"
+    value_group: 1
+    state_group: 1
+    state_mapping:
+      s0: 10
+      s1: 20
+      s2: 30
+      s3: 40
+    color: "red"
+    marker: "o"
+    line_style: "-"
+    yaxis_label: "State"
+    yaxis_index: 0
+
+  # eno5 DPLL lockStatus series (extract from JSON and map states)
+  - name: "eno5 DPLL lockStatus"
+    regex: '"lockStatus":"([^"]+)"[^}]*\}\s+(eno\d+)'
+    tag_filter: "daemon"
+    value_group: 1
+    state_group: 1
+    state_mapping:
+      unlocked: 12
+      locked: 22
+      "locked-ho-acquired": 42
+      holdover: 2
+    color: "black"
+    marker: "."
+    line_style: "-"
+    step: true
+    yaxis_label: "Lock Status"
+    yaxis_index: 0
+
+  # T-BC state series
+  - name: "T-BC state"
+    regex: 'T-BC\[.*\]:\[ts2phc\.\d+\.config\]\s+\w+\s+offset\s+\d+\s+T-BC-STATUS\s+(s[0-2])'
+    tag_filter: "daemon"
+    value_group: 1
+    state_group: 1
+    state_mapping:
+      s0: 14
+      s1: 24
+      s2: 34
+    color: "magenta"
+    marker: "d"
+    line_style: "-"
+    yaxis_label: "T-BC State"
+    yaxis_index: 0
+
+  # eno5 DPLL phase offset series
+  - name: "eno5 DPLL offset"
+    regex: 'dpll\.go:\d+\]\s+setting phase offset to\s+(-?\d+)\s+ns for clock id\s+\d+\s+iface\s+(eno\d+)'
+    tag_filter: "daemon"
+    value_group: 1
+    color: "teal"
+    marker: "."
+    line_style: "-"
+    yaxis_label: "DPLL Offset (ns)"
+    yaxis_index: 0
+
+  # Pin notification series (extract phaseOffsetPs from second item in pinParentDevice array, convert ps to ns)
+  - name: "pin notification phaseOffsetPs"
+    regex: '"pinParentDevice":\[[^}]*\{[^}]*\}[^}]*\{[^}]*"phaseOffsetPs":(-?\d+)'
+    tag_filter: "dut"
+    value_group: 1
+    value_multiplier: 0.001
+    color: "orange"
+    marker: "."
+    line_style: "-"
+    yaxis_label: "Phase Offset (ns)"
+    yaxis_index: 0
+
+  # Device notification series (extract lockStatus and map states)
+  - name: "device notification lockStatus"
+    regex: '"lockStatus":"([^"]+)"[^}]*"type":"pps"'
+    tag_filter: "dut"
+    value_group: 1
+    state_group: 1
+    state_mapping:
+      unlocked: 10
+      locked: 20
+      "locked-ho-acquired": 30
+      holdover: 40
+    color: "green"
+    marker: "o"
+    line_style: "-"
+    step: true
+    yaxis_label: "Lock Status"
+    yaxis_index: 0
+
+  # # phc-ts offset series (extract fractional nanoseconds from timestamp, per device)
+  # - name: "phc-ts offset"
+  #   regex: 'adding tstamp \d+\.(\d+) to clock (/dev/ptp\d+)'
+  #   tag_filter: "dut"
+  #   value_group: 1
+  #   device_group: 2
+  #   convert_nanosecond_offset: true
+  #   color: "cyan"
+  #   marker: "."
+  #   line_style: "-"
+  #   yaxis_label: "PHC-TS Offset (ns)"
+  #   yaxis_index: 0
+
+  # # ts2phc offset series (extract offset from ts2phc lines, per device)
+  # - name: "ts2phc offset"
+  #   regex: '(/dev/ptp\d+)\s+offset\s+(-?\d+)\s+s\d+\s+freq'
+  #   tag_filter: "dut"
+  #   value_group: 2
+  #   device_group: 1
+  #   color: "brown"
+  #   marker: "."
+  #   line_style: "-"
+  #   yaxis_label: "ts2phc Offset (ns)"
+  #   yaxis_index: 0
