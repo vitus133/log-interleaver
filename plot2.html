@@ -17857,7 +17857,8 @@
         const hasRange = min !== null && max !== null;
         
         
-        if (!hasTickSpacing && !hasTickCount) {
+        let effectiveMin = min, effectiveMax = max;
+        if (effectiveMin === null || effectiveMax === null) {
             
             let dataMin = Infinity, dataMax = -Infinity;
             series.forEach(s => {
@@ -17868,10 +17869,25 @@
                     if (seriesMax > dataMax) dataMax = seriesMax;
                 }
             });
+            if (isFinite(dataMin) && isFinite(dataMax)) {
+                effectiveMin = dataMin;
+                effectiveMax = dataMax;
+            }
+        }
+        
+        
+        if (effectiveMin !== null && effectiveMax !== null && effectiveMax > effectiveMin) {
+            let spacing = null;
             
-            if (isFinite(dataMin) && isFinite(dataMax) && dataMax > dataMin) {
+            if (hasTickSpacing) {
                 
-                const dataRange = dataMax - dataMin;
+                spacing = Number(data.y_tick_spacing);
+            } else if (hasTickCount) {
+                
+                spacing = (effectiveMax - effectiveMin) / (Number(data.y_tick_count) - 1);
+            } else {
+                
+                const dataRange = effectiveMax - effectiveMin;
                 let targetSpacing = dataRange / 10;
                 
                 if (targetSpacing > 0) {
@@ -17882,87 +17898,38 @@
                     else if (normalized <= 2) multiplier = 2;
                     else if (normalized <= 5) multiplier = 5;
                     else multiplier = 10;
-                    targetSpacing = multiplier * magnitude;
-                    
-                    
-                    const tickvals = [];
-                    const ticktext = [];
-                    
-                    let startVal = Math.floor(dataMin / targetSpacing) * targetSpacing;
-                    if (startVal > dataMin) {
-                        startVal -= targetSpacing;
-                    }
-                    
-                    let val = startVal;
-                    const maxVal = dataMax + targetSpacing * 0.1; 
-                    while (val <= maxVal) {
-                        tickvals.push(val);
-                        
-                        const formatted = val.toFixed(0);
-                        ticktext.push(formatted.replace(/\u2212/g, '-'));
-                        val += targetSpacing;
-                    }
-                    
-                    
-                    if (tickvals.length >= 2 && tickvals.length <= 15) {
-                        yaxisConfig.tickmode = 'array';
-                        yaxisConfig.tickvals = tickvals;
-                        yaxisConfig.ticktext = ticktext;
-                    } else {
-                        
-                        yaxisConfig.dtick = targetSpacing;
-                    }
+                    spacing = multiplier * magnitude;
                 }
             }
-        }
-        
-        
-        if (hasRange) {
             
-            if (hasTickSpacing || hasTickCount) {
-                let spacing = null;
-                if (hasTickSpacing) {
-                    spacing = Number(data.y_tick_spacing);
-                } else if (hasTickCount) {
-                    spacing = (max - min) / (Number(data.y_tick_count) - 1);
-                    yaxisConfig.nticks = Number(data.y_tick_count);
+            
+            if (spacing !== null && !isNaN(spacing) && spacing > 0 && isFinite(spacing)) {
+                const tickvals = [];
+                const ticktext = [];
+                
+                let startVal = Math.floor(effectiveMin / spacing) * spacing;
+                if (startVal > effectiveMin) {
+                    startVal -= spacing;
                 }
                 
-                if (spacing !== null && !isNaN(spacing) && spacing > 0 && isFinite(spacing)) {
+                let val = startVal;
+                const maxVal = effectiveMax + spacing * 0.001; 
+                while (val <= maxVal) {
+                    tickvals.push(val);
                     
-                    const tickvals = [];
-                    const ticktext = [];
+                    const formatted = val.toFixed(0);
+                    ticktext.push(formatted.replace(/\u2212/g, '-'));
+                    val += spacing;
+                }
+                
+                
+                if (tickvals.length >= 2 && tickvals.length <= 20) {
+                    yaxisConfig.tickmode = 'array';
+                    yaxisConfig.tickvals = tickvals;
+                    yaxisConfig.ticktext = ticktext;
+                } else {
                     
-                    let startVal = Math.floor(min / spacing) * spacing;
-                    if (startVal < min) {
-                        startVal += spacing;
-                    }
-                    
-                    let val = startVal;
-                    const maxVal = max + spacing * 0.001;
-                    while (val <= maxVal) {
-                        tickvals.push(val);
-                        
-                        const formatted = val.toFixed(0);
-                        ticktext.push(formatted.replace(/\u2212/g, '-'));
-                        val += spacing;
-                    }
-                    
-                    
-                    if (tickvals.length >= 2) {
-                        yaxisConfig.tickmode = 'array';
-                        yaxisConfig.tickvals = tickvals;
-                        yaxisConfig.ticktext = ticktext;
-                        delete yaxisConfig.nticks; 
-                    } else if (hasTickSpacing) {
-                        
-                        yaxisConfig.dtick = spacing;
-                        delete yaxisConfig.nticks; 
-                    }
-                } else if (hasTickSpacing) {
-                    
-                    yaxisConfig.dtick = Number(data.y_tick_spacing);
-                    delete yaxisConfig.nticks; 
+                    yaxisConfig.dtick = spacing;
                 }
             }
         }
