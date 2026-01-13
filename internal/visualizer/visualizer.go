@@ -10,6 +10,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
@@ -153,6 +154,21 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 		}
 	}
 
+	// Find the earliest timestamp across ALL metrics to use as the reference point
+	// This ensures all series are plotted relative to the same start time
+	var earliestTime *time.Time
+	for _, points := range metrics {
+		for _, pt := range points {
+			if earliestTime == nil || pt.Time.Before(*earliestTime) {
+				t := pt.Time
+				earliestTime = &t
+			}
+		}
+	}
+	if earliestTime == nil {
+		return fmt.Errorf("no timestamps found in metrics")
+	}
+
 	// Group series by Y-axis index
 	// For device-based series, we need to find all series that start with the pattern name
 	seriesByAxis := make(map[int][]string)
@@ -216,7 +232,6 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 
 			// Convert to plotter.XYs
 			var xy plotter.XYs
-			startTime := points[0].Time
 
 			// Check if step plot is requested
 			useStep := patternCfg != nil && patternCfg.Step
@@ -227,7 +242,7 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 					// Each point needs a horizontal segment to the next x value
 					xy = make(plotter.XYs, 0, len(points)*2-1)
 					for i, pt := range points {
-						x := pt.Time.Sub(startTime).Seconds()
+						x := pt.Time.Sub(*earliestTime).Seconds()
 						y := pt.Value
 
 						// Add the point
@@ -235,7 +250,7 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 
 						// Add horizontal segment to next point (if not last point)
 						if i < len(points)-1 {
-							nextX := points[i+1].Time.Sub(startTime).Seconds()
+							nextX := points[i+1].Time.Sub(*earliestTime).Seconds()
 							xy = append(xy, plotter.XY{X: nextX, Y: y})
 						}
 					}
@@ -252,8 +267,8 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 						}
 					}
 					// Create two points: one at the actual time, one at the max time
-					x1 := points[0].Time.Sub(startTime).Seconds()
-					x2 := maxTime.Sub(startTime).Seconds()
+					x1 := points[0].Time.Sub(*earliestTime).Seconds()
+					x2 := maxTime.Sub(*earliestTime).Seconds()
 					y := points[0].Value
 					xy = plotter.XYs{
 						{X: x1, Y: y},
@@ -264,7 +279,7 @@ func (v *Visualizer) GeneratePlot(lines []*parser.LogLine, outputPath string) er
 				// Normal linear plot
 				xy = make(plotter.XYs, len(points))
 				for i, pt := range points {
-					xy[i].X = pt.Time.Sub(startTime).Seconds()
+					xy[i].X = pt.Time.Sub(*earliestTime).Seconds()
 					xy[i].Y = pt.Value
 				}
 			}
