@@ -25,20 +25,20 @@ func ExportData(lines []*parser.LogLine, configPath, outputPath string) error {
 	patternConfigs := make([]pattern.PatternConfig, len(cfg.Patterns))
 	for i, p := range cfg.Patterns {
 		patternConfigs[i] = pattern.PatternConfig{
-			Name:           p.Name,
-			Regex:          p.Regex,
-			TagFilter:      p.TagFilter,
-			ValueGroup:     p.ValueGroup,
-			StateGroup:     p.StateGroup,
-			DeviceGroup:    p.DeviceGroup,
-			StateMapping:   p.StateMapping,
-			ValueMultiplier: p.ValueMultiplier,
+			Name:                    p.Name,
+			Regex:                   p.Regex,
+			TagFilter:               p.TagFilter,
+			ValueGroup:              p.ValueGroup,
+			StateGroup:              p.StateGroup,
+			DeviceGroup:             p.DeviceGroup,
+			StateMapping:            p.StateMapping,
+			ValueMultiplier:         p.ValueMultiplier,
 			ConvertNanosecondOffset: p.ConvertNanosecondOffset,
-			Color:          p.Color,
-			LineStyle:      p.LineStyle,
-			Marker:         p.Marker,
-			YAxisLabel:     p.YAxisLabel,
-			YAxisIndex:     p.YAxisIndex,
+			Color:                   p.Color,
+			LineStyle:               p.LineStyle,
+			Marker:                  p.Marker,
+			YAxisLabel:              p.YAxisLabel,
+			YAxisIndex:              p.YAxisIndex,
 		}
 	}
 
@@ -191,15 +191,15 @@ func ExportData(lines []*parser.LogLine, configPath, outputPath string) error {
 
 // SeriesData represents a time series for JSON/HTML export
 type SeriesData struct {
-	Name         string            `json:"name"`
-	X            []float64         `json:"x"`            // Time offsets in seconds
-	Y            []float64         `json:"y"`            // Values
-	Color        string            `json:"color,omitempty"`
-	Marker       string            `json:"marker,omitempty"`
-	LineStyle    string            `json:"line_style,omitempty"`
-	Mode         string            `json:"mode"`         // "lines+markers", "lines", "markers"
-	Step         bool              `json:"step,omitempty"` // If true, use step plot (hold value between points)
-	YAxisLabel   string            `json:"yaxis_label,omitempty"` // Y-axis label for this series
+	Name         string             `json:"name"`
+	X            []float64          `json:"x"` // Time offsets in seconds
+	Y            []float64          `json:"y"` // Values
+	Color        string             `json:"color,omitempty"`
+	Marker       string             `json:"marker,omitempty"`
+	LineStyle    string             `json:"line_style,omitempty"`
+	Mode         string             `json:"mode"`                  // "lines+markers", "lines", "markers"
+	Step         bool               `json:"step,omitempty"`        // If true, use step plot (hold value between points)
+	YAxisLabel   string             `json:"yaxis_label,omitempty"` // Y-axis label for this series
 	StateMapping map[string]float64 `json:"state_mapping,omitempty"`
 }
 
@@ -215,20 +215,20 @@ func ExportJSON(lines []*parser.LogLine, configPath, outputPath string) error {
 	patternConfigs := make([]pattern.PatternConfig, len(cfg.Patterns))
 	for i, p := range cfg.Patterns {
 		patternConfigs[i] = pattern.PatternConfig{
-			Name:           p.Name,
-			Regex:          p.Regex,
-			TagFilter:      p.TagFilter,
-			ValueGroup:     p.ValueGroup,
-			StateGroup:     p.StateGroup,
-			DeviceGroup:    p.DeviceGroup,
-			StateMapping:   p.StateMapping,
-			ValueMultiplier: p.ValueMultiplier,
+			Name:                    p.Name,
+			Regex:                   p.Regex,
+			TagFilter:               p.TagFilter,
+			ValueGroup:              p.ValueGroup,
+			StateGroup:              p.StateGroup,
+			DeviceGroup:             p.DeviceGroup,
+			StateMapping:            p.StateMapping,
+			ValueMultiplier:         p.ValueMultiplier,
 			ConvertNanosecondOffset: p.ConvertNanosecondOffset,
-			Color:          p.Color,
-			LineStyle:      p.LineStyle,
-			Marker:         p.Marker,
-			YAxisLabel:     p.YAxisLabel,
-			YAxisIndex:     p.YAxisIndex,
+			Color:                   p.Color,
+			LineStyle:               p.LineStyle,
+			Marker:                  p.Marker,
+			YAxisLabel:              p.YAxisLabel,
+			YAxisIndex:              p.YAxisIndex,
 		}
 	}
 
@@ -262,7 +262,7 @@ func ExportJSON(lines []*parser.LogLine, configPath, outputPath string) error {
 	// Build series data
 	// For device-based series, we need to iterate over all metrics and match them to patterns
 	seriesList := make([]SeriesData, 0)
-	
+
 	// First, collect all series names that match each pattern
 	for _, pattern := range cfg.Patterns {
 		// Find all series that match this pattern (including device-based ones)
@@ -352,7 +352,7 @@ func ExportJSON(lines []*parser.LogLine, configPath, outputPath string) error {
 		"start_time":  earliestTime.Format(time.RFC3339Nano),
 		"series":      seriesList,
 	}
-	
+
 	// Add Y-axis range if configured
 	if cfg.YRange != nil {
 		output["y_range"] = *cfg.YRange
@@ -364,7 +364,7 @@ func ExportJSON(lines []*parser.LogLine, configPath, outputPath string) error {
 			output["y_max"] = *cfg.YMax
 		}
 	}
-	
+
 	// Add Y-axis tick spacing/count if configured
 	if cfg.YTickSpacing != nil {
 		output["y_tick_spacing"] = *cfg.YTickSpacing
